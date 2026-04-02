@@ -1,51 +1,75 @@
 import streamlit as st
-import os
+import time
 from google import genai
 from google.genai import types
 
-st.set_page_config(page_title="Chat Gemini", page_icon="🤖")
-st.title("🤖 Consulta a Carta de Serviços")
+st.set_page_config(page_title="Meu Gem Particular", layout="wide")
 
-#api_key = st.sidebar.text_input("API Key:", type="password")
-api_key = st.secrets["GEMINI_API_KEY"]
+# --- LOGIN / CONFIGURAÇÃO ---
+with st.sidebar:
+    st.title("🔑 Acesso")
+    api_key = st.text_input("Gemini API Key:", type="password")
+    if not api_key:
+        st.info("Insira a chave para libertar as funções.")
+        st.stop()
 
-if "mensagens" not in st.session_state:
-    st.session_state.mensagens = []
+client = genai.Client(api_key=api_key)
 
-def carregar_contexto(client):
-    if not os.path.exists("database.txt"):
-        return None
-    with open("database.txt", "r") as f:
-        nomes = f.read().splitlines()
-    return [client.files.get(name=n) for n in nomes]
+# Criamos as abas para separar as funções
+tab_admin, tab_chat = st.tabs(["📤 Carregar Base de Conhecimento", "💬 Conversar com o Gem"])
 
-if api_key:
-    client = genai.Client(api_key=api_key)
+# --- ABA 1: ADMIN (CARGA) ---
+with tab_admin:
+    st.header("Gestão de Documentos")
+    arquivos_novos = st.file_uploader("Upload de arquivos:", accept_multiple_files=True)
     
-    # Mostrar Histórico
-    for msg in st.session_state.mensagens:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    if st.button("🚀 Sincronizar Base de Dados") and arquivos_novos:
+        with st.status("A processar documentos...") as status:
+            refs = []
+            for arq in arquivos_novos:
+                # Corrigido com o mime_type que resolvemos antes
+                ref = client.files.upload(file=arq, config={"mime_type": arq.type})
+                refs.append(ref)
+            
+            # Esperar indexação
+            while not all(client.files.get(name=r.name).state.name == "ACTIVE" for r in refs):
+                time.sleep(2)
+            
+            # GUARDAR NA MEMÓRIA DA SESSÃO
+            st.session_state['meu_conhecimento'] = refs
+            status.update(label="✅ Conhecimento pronto!", state="complete")
+        st.success(f"{len(refs)} arquivos prontos para o chat!")
 
-    # Entrada de Pergunta
-    if pergunta := st.chat_input("O que desejas saber?"):
-        st.session_state.mensagens.append({"role": "user", "content": pergunta})
-        with st.chat_message("user"):
-            st.markdown(pergunta)
+# --- ABA 2: CHAT (CONSULTA) ---
+with tab_chat:
+    st.header("Consulta Carta de Serviços")
+    
+    if 'meu_conhecimento' not in st.session_state:
+        st.warning("⚠️ Vai à aba 'Carregar Conhecimento' primeiro.")
+    else:
+        # Histórico de Chat
+        if "mensagens" not in st.session_state:
+            st.session_state.mensagens = []
 
-        with st.chat_message("assistant"):
-            try:
-                contexto = carregar_contexto(client)
-                if not contexto:
-                    st.error("Nenhum conhecimento carregado. Usa a App Admin primeiro.")
-                else:
-                    instrucao = "Responda apenas com base nos documentos fornecidos."
-                    resposta = client.models.generate_content(
+        for msg in st.session_state.mensagens:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        if pergunta := st.chat_input("Pergunta algo..."):
+            st.session_state.mensagens.append({"role": "user", "content": pergunta})
+            with st.chat_message("user"):
+                st.markdown(pergunta)
+
+            with st.chat_message("assistant"):
+                try:
+                    res = client.models.generate_content(
                         model="gemini-1.5-flash",
-                        config=types.GenerateContentConfig(system_instruction=instrucao),
-                        contents=contexto + [pergunta]
+                        config=types.GenerateContentConfig(
+                            system_instruction="Responda com base nos arquivos fornecidos."
+                        ),
+                        contents=st.session_state['meu_conhecimento'] + [pergunta]
                     )
-                    st.markdown(resposta.text)
-                    st.session_state.mensagens.append({"role": "assistant", "content": resposta.text})
-            except Exception as e:
-                st.error(f"Erro: Os ficheiros podem ter expirado (48h). Recarregue no Admin. {e}")
+                    st.markdown(res.text)
+                    st.session_state.mensagens.append({"role": "assistant", "content": res.text})
+                except Exception as e:
+                    st.error(f"Erro na consulta: {e}")
