@@ -13,8 +13,7 @@ if api_key:
     client = genai.Client(api_key=api_key)
     
     # Upload de arquivos via Browser
-    arquivos_novos = st.file_uploader("Escolhe os documentos (PDF, TXT, etc.)", 
-                                      accept_multiple_files=True)
+    arquivos_novos = st.file_uploader("Escolhe os documentos (PDF, TXT, etc.)", accept_multiple_files=True)
 
     if st.button("🚀 Sincronizar com Gemini") and arquivos_novos:
         refs_nomes = []
@@ -24,7 +23,7 @@ if api_key:
         for i, arquivo in enumerate(arquivos_novos):
             status.text(f"A enviar: {arquivo.name}...")
             # O Streamlit passa o arquivo diretamente para a API do Gemini
-            ref = client.files.upload(path=arquivo)
+            ref = client.files.upload(arquivo)
             refs_nomes.append(ref.name)
             progresso.progress((i + 1) / len(arquivos_novos))
 
