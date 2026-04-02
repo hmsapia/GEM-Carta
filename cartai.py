@@ -63,7 +63,7 @@ with tab_chat:
             with st.chat_message("assistant"):
                 try:
                     res = client.models.generate_content(
-                        model="models/gemini-1.5-flash",
+                        model="gemini-1.5-flash-002",
                         config=types.GenerateContentConfig(
                             system_instruction="Responda com base nos arquivos fornecidos."
                         ),
