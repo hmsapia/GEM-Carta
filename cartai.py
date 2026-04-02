@@ -3,10 +3,11 @@ import os
 from google import genai
 from google.genai import types
 
-st.set_page_config(page_title="Chat Gemini", icon="🤖")
+st.set_page_config(page_title="Chat Gemini", page_icon="🤖")
 st.title("🤖 Consulta de Documentos")
 
-api_key = st.sidebar.text_input("API Key:", type="password")
+#api_key = st.sidebar.text_input("API Key:", type="password")
+api_key = st.secrets["GEMINI_API_KEY"]
 
 if "mensagens" not in st.session_state:
     st.session_state.mensagens = []
