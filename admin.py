@@ -23,7 +23,7 @@ if api_key:
         for i, arquivo in enumerate(arquivos_novos):
             status.text(f"A enviar: {arquivo.name}...")
             # O Streamlit passa o arquivo diretamente para a API do Gemini
-            ref = client.files.upload(arquivo)
+            ref = client.files.upload(file=arquivo)
             refs_nomes.append(ref.name)
             progresso.progress((i + 1) / len(arquivos_novos))
 
