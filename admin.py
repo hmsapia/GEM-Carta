@@ -6,7 +6,8 @@ st.set_page_config(page_title="Admin - Carga Gemini", icon="📤")
 st.title("📤 Carregar Base de Conhecimento")
 
 # Configuração da API
-api_key = st.secrets["GEMINI_API_KEY"]
+# api_key = st.secrets["GEMINI_API_KEY"]
+api_key = st.sidebar.text_input("Insere a tua Gemini API Key:", type="password")
 
 if api_key:
     client = genai.Client(api_key=api_key)
@@ -34,4 +35,4 @@ if api_key:
         status.text("✅ Todos os arquivos foram indexados!")
         st.success(f"Base de conhecimento atualizada com {len(refs_nomes)} arquivos.")
 else:
-    st.info("Erro na tua API Key.")
+    st.info("Erro na API Key.")
