@@ -23,6 +23,11 @@ with tab_admin:
     st.header("Gestão de Documentos")
     arquivos_novos = st.file_uploader("Upload de arquivos:", accept_multiple_files=True)
     
+    # Código para listar modelos disponíveis para a sua chave
+    for m in client.models.list():
+        st.write(f"ID: {m.name} | Suporta: {m.supported_actions}")
+
+
     if st.button("🚀 Sincronizar Base de Dados") and arquivos_novos:
         with st.status("A processar documentos...") as status:
             refs = []
