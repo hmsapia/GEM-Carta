@@ -66,15 +66,29 @@ with tab_chat:
                 st.markdown(pergunta)
 
             with st.chat_message("assistant"):
-                try:
-                    res = client.models.generate_content(
-                        model="models/gemini-2.5-flash",
-                        config=types.GenerateContentConfig(
-                            system_instruction="Responda com base nos arquivos fornecidos."
-                        ),
-                        contents=st.session_state['meu_conhecimento'] + [pergunta]
-                    )
-                    st.markdown(res.text)
-                    st.session_state.mensagens.append({"role": "assistant", "content": res.text})
-                except Exception as e:
-                    st.error(f"Erro na consulta: {e}")
+                # O 'st.spinner' cria o indicador visual de processamento
+                with st.spinner("🤖 Estamos analisando a Carta de Serviços..."):
+                    try:
+                        contexto = st.session_state['meu_conhecimento']
+                    
+                        # Preparamos os dados para o modelo
+                        prompt_completo = []
+                        for f in contexto:
+                            prompt_completo.append(f)
+                        prompt_completo.append(pergunta)
+
+                        # Chamada à API (o que demora mais tempo)
+                        resposta = client.models.generate_content(
+                            model="models/gemini-2.5-flash", 
+                            config=types.GenerateContentConfig(
+                                system_instruction="Responda com base nos arquivos fornecidos."
+                            ),
+                            contents=prompt_completo
+                        )
+                    
+                        # Quando o bloco 'with' termina, o spinner desaparece automaticamente
+                        st.markdown(resposta.text)
+                        st.session_state.mensagens.append({"role": "assistant", "content": resposta.text})
+                    
+                    except Exception as e:
+                        st.error(f"Erro na consulta: {e}")
