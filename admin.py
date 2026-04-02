@@ -6,8 +6,8 @@ st.set_page_config(page_title="Admin - Carga Gemini", layout="centered")
 st.title("📤 Carregar Base de Conhecimento")
 
 # Configuração da API
-# api_key = st.secrets["GEMINI_API_KEY"]
-api_key = st.sidebar.text_input("Insere a tua Gemini API Key:", type="password")
+api_key = st.secrets["GEMINI_API_KEY"]
+# api_key = st.sidebar.text_input("Insere a tua Gemini API Key:", type="password")
 
 if api_key:
     client = genai.Client(api_key=api_key)
