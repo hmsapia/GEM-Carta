@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from google import genai
 
-st.set_page_config(page_title="Admin - Carga Gemini", layout="centered")
+st.set_page_config(page_title="Admin - Carga Gemini", layout="centered", file_icons="📤")
 st.title("📤 Carregar Base de Conhecimento")
 
 # Configuração da API

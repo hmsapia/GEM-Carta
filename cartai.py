@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 
 st.set_page_config(page_title="Chat Gemini", page_icon="🤖")
-st.title("🤖 Consulta de Documentos")
+st.title("🤖 Consulta a Carta de Serviços")
 
 #api_key = st.sidebar.text_input("API Key:", type="password")
 api_key = st.secrets["GEMINI_API_KEY"]
