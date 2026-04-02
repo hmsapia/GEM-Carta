@@ -97,7 +97,7 @@ with tab_chat:
                         prompt_completo = contexto + [pergunta]
 
                         res = client.models.generate_content(
-                            model="gemini-1.5-flash-002", 
+                            model="models/gemini-2.5-flash", 
                             config=types.GenerateContentConfig(
                                 system_instruction="Responda com base nos arquivos fornecidos.",
                                 temperature=0.0
