@@ -22,11 +22,20 @@ if api_key:
 
         for i, arquivo in enumerate(arquivos_novos):
             status.text(f"A enviar: {arquivo.name}...")
-            # O Streamlit passa o arquivo diretamente para a API do Gemini
-            ref = client.files.upload(file=arquivo)
+            
+            # 1. Definimos a configuração com o tipo do arquivo
+            # O arquivo.type do Streamlit devolve algo como 'application/pdf'
+            config_upload = {"mime_type": arquivo.type}
+
+            # 2. Fazemos o upload passando o arquivo e a configuração
+            ref = client.files.upload(
+                file=arquivo,
+                config=config_upload
+            )
+            
             refs_nomes.append(ref.name)
             progresso.progress((i + 1) / len(arquivos_novos))
-
+        
         # Guardar os IDs num arquivo local para a App de Usuário ler
         with open("database.txt", "w") as f:
             f.write("\n".join(refs_nomes))
