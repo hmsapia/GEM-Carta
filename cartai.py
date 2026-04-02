@@ -24,8 +24,8 @@ with tab_admin:
     arquivos_novos = st.file_uploader("Upload de arquivos:", accept_multiple_files=True)
     
     # Código para listar modelos disponíveis para a sua chave
-    for m in client.models.list():
-        st.write(f"ID: {m.name} | Suporta: {m.supported_actions}")
+    #for m in client.models.list():
+    #    st.write(f"ID: {m.name} | Suporta: {m.supported_actions}")
 
 
     if st.button("🚀 Sincronizar Base de Dados") and arquivos_novos:
@@ -68,7 +68,7 @@ with tab_chat:
             with st.chat_message("assistant"):
                 try:
                     res = client.models.generate_content(
-                        model="gemini-1.5-flash-002",
+                        model="models/gemini-2.5-flash",
                         config=types.GenerateContentConfig(
                             system_instruction="Responda com base nos arquivos fornecidos."
                         ),
