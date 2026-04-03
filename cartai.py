@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from google import genai
 from google.genai import types
-from datetime import datetime
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Meu Gem Particular", layout="wide")
 
@@ -46,8 +46,25 @@ with tab_admin:
         # 3. Segunda fase: Indexação (Aguarda os arquivos ficarem 'ACTIVE')
         texto_status.text("🔍 A indexar arquivos no Google AI... (quase pronto)")
         while not all(client.files.get(name=r.name).state.name == "ACTIVE" for r in refs):
-            time.sleep(2)
+            time.sleep(0.01)
         
+        # 4. CRIAR A CACHE (O segredo da velocidade)
+        # Importante: O TTL define quanto tempo a cache vive (ex: 2 horas)
+        with st.status("A criar cache de alta velocidade...") as status:
+            cache = client.caches.create(
+                model="gemini-2.5-flash",
+                config=types.CreateCachedContentConfig(
+                    display_name="base_de_conhecimento",
+                    contents=refs,
+                    ttl="7200s" # 2 horas (7200 segundos)
+                )
+            )
+        
+            # Guardamos o nome da cache na sessão
+            st.session_state['cache_name'] = cache.name
+            status.update(label="✅ Cache Ativa!", state="complete")
+        st.success("Base de Conhecimento pronta para consultas instantâneas!")
+
         # Guardar na sessão e finalizar
         st.session_state['meu_conhecimento'] = refs
         texto_status.text("✅ Conhecimento pronto!")
@@ -102,8 +119,9 @@ with tab_chat:
                         # Usamos o stream=True ou a função de stream
                         responses = client.models.generate_content_stream(
                             model="gemini-2.5-flash",
-                            contents=prompt_completo,
+                            contents=[pergunta],
                             config=types.GenerateContentConfig(
+                                cached_content=st.session_state['cache_name'],
                                 system_instruction=instrucao,
                                 temperature=0.0)
                         )
