@@ -11,7 +11,7 @@ with st.sidebar:
     st.title("🔑 Acesso")
     api_key = st.text_input("Gemini API Key:", type="password")
     if not api_key:
-        st.info("Insira a chave para libertar as funções.")
+        st.info("Insira a chave para liberar as funções.")
         st.stop()
 
 client = genai.Client(api_key=api_key)
@@ -90,20 +90,24 @@ with tab_chat:
             with st.chat_message("assistant"):
                 with st.spinner("🤖 A analisar..."):
                     try:
-                        # Pegamos a hora exata da resposta
-                        hora_resp = datetime.now().strftime("%H:%M")
-                        
                         contexto = st.session_state['meu_conhecimento']
                         prompt_completo = contexto + [pergunta]
-
+                        instrucao = """
+                        Você é servidor público do Município de Presidente Prudente 
+                        e deve responder às perguntas dos munícipes usando apenas os documentos fornecidos.
+                        Se a resposta não estiver nos documentos, diga que não sabe. 
+                        """
                         res = client.models.generate_content(
                             model="models/gemini-2.5-flash", 
                             config=types.GenerateContentConfig(
-                                system_instruction="Responda com base nos arquivos fornecidos.",
+                                system_instruction=instrucao,
                                 temperature=0.0
                             ),
                             contents=prompt_completo
                         )
+                        
+                        # Pegamos a hora exata da resposta
+                        hora_resp = datetime.now().strftime("%H:%M")
                         
                         # Mostrar e guardar resposta com hora
                         st.caption(f"🕒 {hora_resp}")
