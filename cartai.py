@@ -52,7 +52,7 @@ with tab_admin:
         # Importante: O TTL define quanto tempo a cache vive (ex: 2 horas)
         with st.status("A criar cache de alta velocidade...") as status:
             cache = client.caches.create(
-                model="gemini-2.5-flash",
+                model="gemini-2.0-flash",
                 config=types.CreateCachedContentConfig(
                     display_name="base_de_conhecimento",
                     contents=refs,
@@ -118,7 +118,7 @@ with tab_chat:
                         """
                         # Usamos o stream=True ou a função de stream
                         responses = client.models.generate_content_stream(
-                            model="gemini-2.5-flash",
+                            model="gemini-2.0-flash",
                             #contents=prompt_completo,
                             contents=[pergunta],
                             config=types.GenerateContentConfig(
