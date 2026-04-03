@@ -114,15 +114,6 @@ with tab_chat:
         
                         placeholder.markdown(full_response) # Finaliza sem o cursor
 
-                        res = client.models.generate_content(
-                            model="models/gemini-2.5-flash", 
-                            config=types.GenerateContentConfig(
-                                system_instruction=instrucao,
-                                temperature=0.0
-                            ),
-                            contents=prompt_completo
-                        )
-                        
                         # Pegamos a hora exata da resposta
                         hora_resp = datetime.now().strftime("%H:%M")
 
