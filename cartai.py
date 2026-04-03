@@ -88,7 +88,9 @@ with tab_chat:
 
             # 4. Gerar Resposta do Assistente
             with st.chat_message("assistant"):
-                with st.spinner("🤖 A analisar..."):
+                placeholder = st.empty() # Espaço para a resposta ir "brotando"
+                full_response = ""
+                with st.spinner("⚡ A processar..."):
                     try:
                         contexto = st.session_state['meu_conhecimento']
                         prompt_completo = contexto + [pergunta]
@@ -97,6 +99,21 @@ with tab_chat:
                         e deve responder às perguntas dos munícipes usando apenas os documentos fornecidos.
                         Se a resposta não estiver nos documentos, diga que não sabe. 
                         """
+                        # Usamos o stream=True ou a função de stream
+                        responses = client.models.generate_content_stream(
+                            model="gemini-2.5-flash",
+                            contents=prompt_completo,
+                            config=types.GenerateContentConfig(
+                                system_instruction=instrucao,
+                                temperature=0.0)
+                        )
+                        for chunk in responses:
+                            full_response += chunk.text
+                            # Atualiza a tela em tempo real
+                            placeholder.markdown(full_response + "▌")
+        
+                        placeholder.markdown(full_response) # Finaliza sem o cursor
+
                         res = client.models.generate_content(
                             model="models/gemini-2.5-flash", 
                             config=types.GenerateContentConfig(
@@ -108,13 +125,13 @@ with tab_chat:
                         
                         # Pegamos a hora exata da resposta
                         hora_resp = datetime.now().strftime("%H:%M")
-                        
+
                         # Mostrar e guardar resposta com hora
                         st.caption(f"🕒 {hora_resp}")
-                        st.markdown(res.text)
+                        #st.markdown(res.text)
                         st.session_state.mensagens.append({
                             "role": "assistant", 
-                            "content": res.text, 
+                            "content": full_response, 
                             "hora": hora_resp
                         })
                         
