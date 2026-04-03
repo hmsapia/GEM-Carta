@@ -119,9 +119,10 @@ with tab_chat:
                         # Usamos o stream=True ou a função de stream
                         responses = client.models.generate_content_stream(
                             model="gemini-2.0-flash",
-                            contents=[pergunta],
+                            contents=prompt_completo,
+                            #contents=[pergunta],
                             config=types.GenerateContentConfig(
-                                cached_content=st.session_state['cache_name'],
+                            #    cached_content=st.session_state['cache_name'],
                                 system_instruction=instrucao,
                                 temperature=0.0)
                         )
