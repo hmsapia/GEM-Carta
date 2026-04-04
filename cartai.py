@@ -67,13 +67,15 @@ with tab_admin:
 with tab_chat:
     st.header("💬 Consulta Carta de Serviços")
     
-    if 'meu_conhecimento' not in st.session_state:
-        st.warning("⚠️ Vai à aba 'Carregar Conhecimento' primeiro.")
+    # Verificar se o banco de dados RAG existe na sessão
+    if 'vector_db' not in st.session_state:
+        st.warning("⚠️ A base de dados ainda não foi processada. Vá à aba 'Carregar Base de Conhecimento' e clique em Sincronizar.")
+        st.stop() # Interrompe a execução desta aba até que a base exista
+    
     else:
-        # Inicializar histórico se não existir
+        # 1. Inicializar histórico se não existir
         if "mensagens" not in st.session_state:
             st.session_state.mensagens = []
-
         # 2. Mostrar Histórico com Horas
         for msg in st.session_state.mensagens:
             with st.chat_message(msg["role"]):
