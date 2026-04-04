@@ -1,8 +1,15 @@
 import streamlit as st
 import time
+import os
+import tempfile
+import langchain
 from google import genai
 from google.genai import types
 from datetime import datetime
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 st.set_page_config(page_title="Meu Gem Particular", layout="wide")
 
@@ -25,50 +32,36 @@ with tab_admin:
     arquivos_novos = st.file_uploader("Upload de arquivos:", accept_multiple_files=True)
     
     if st.button("🚀 Sincronizar Base de Dados") and arquivos_novos:
-        # 1. Criamos a barra de progresso e um texto de status
         progresso_barra = st.progress(0)
         texto_status = st.empty()
         
-        refs = []
-        total = len(arquivos_novos)
-
-        # 2. Loop de Upload com atualização da barra
+        all_docs = []
+        # Configuração do modelo de Embeddings (transforma texto em números)
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
+        
         for i, arq in enumerate(arquivos_novos):
-            # Atualiza o texto e a barra (valor entre 0.0 e 1.0)
-            percentagem = (i + 1) / total
-            texto_status.text(f"📤 A enviar ({i+1}/{total}): {arq.name}")
-            progresso_barra.progress(percentagem)
+            texto_status.text(f"📖 Processando: {arq.name}")
             
-            # Upload para o Gemini
-            ref = client.files.upload(file=arq, config={"mime_type": arq.type})
-            refs.append(ref)
-        
-        # 3. Segunda fase: Indexação (Aguarda os arquivos ficarem 'ACTIVE')
-        texto_status.text("🔍 A indexar arquivos no Google AI... (quase pronto)")
-        while not all(client.files.get(name=r.name).state.name == "ACTIVE" for r in refs):
-            time.sleep(0.01)
-        
-        # # 4. CRIAR A CACHE (O segredo da velocidade)
-        # # Importante: O TTL define quanto tempo a cache vive (ex: 2 horas)
-        # with st.status("A criar cache de alta velocidade...") as status:
-        #     cache = client.caches.create(
-        #         model="gemini-2.5-flash",
-        #         config=types.CreateCachedContentConfig(
-        #             display_name="base_de_conhecimento",
-        #             contents=refs,
-        #             ttl="7200s" # 2 horas (7200 segundos)
-        #         )
-        #     )
-        
-        #     # Guardamos o nome da cache na sessão
-        #     st.session_state['cache_name'] = cache.name
-        #     status.update(label="✅ Cache Ativa!", state="complete")
-        # st.success("Base de Conhecimento pronta para consultas instantâneas!")
+            # Salva temporariamente para o Loader do LangChain conseguir ler
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(arq.getvalue())
+                loader = PyPDFLoader(tmp.name)
+                all_docs.extend(loader.load())
+            os.unlink(tmp.name) # Remove arquivo temporário
+            
+            progresso_barra.progress((i + 1) / len(arquivos_novos))
 
-        # Guardar na sessão e finalizar
-        st.session_state['meu_conhecimento'] = refs
-        texto_status.text("✅ Conhecimento pronto!")
-        st.success(f"Sucesso! {len(refs)} arquivos carregados.")
+        # Divisão em pedaços (Chunks) para a busca ser precisa
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        chunks = text_splitter.split_documents(all_docs)
+        
+        # Criação do banco de dados vetorial (FAISS)
+        texto_status.text("🧠 Criando base de conhecimento inteligente...")
+        vector_db = FAISS.from_documents(chunks, embeddings)
+        
+        # Guardar o banco na sessão
+        st.session_state['vector_db'] = vector_db
+        st.success(f"✅ Base pronta! {len(chunks)} trechos indexados.")
 
 # --- ABA 2: CHAT (CONSULTA) ---
 with tab_chat:
@@ -109,23 +102,35 @@ with tab_chat:
                 full_response = ""
                 with st.spinner("⚡ A processar..."):
                     try:
-                        contexto = st.session_state['meu_conhecimento']
-                        prompt_completo = contexto + [pergunta]
-                        instrucao = """
-                        Você é servidor público do Município de Presidente Prudente 
-                        e deve responder às perguntas dos munícipes usando apenas os documentos fornecidos.
-                        Se a resposta não estiver nos documentos, diga que não sabe. 
+                        # 1. Recuperar trechos relevantes (Top 5 trechos)
+                        vector_db = st.session_state['vector_db']
+                        docs_relevantes = vector_db.similarity_search(pergunta, k=5)
+                        contexto_extraido = "\n\n".join([doc.page_content for doc in docs_relevantes])
+                        
+                        # 2. Montar o Prompt RAG
+                        prompt_rag = f"""
+                        CONTEXTO DOS DOCUMENTOS:
+                        {contexto_extraido}
+                        
+                        PERGUNTA DO MUNÍCIPE:
+                        {pergunta}
                         """
-                        # Usamos o stream=True ou a função de stream
+
+                        instrucao = """
+                        Você é servidor público do Município de Presidente Prudente.
+                        Responda usando APENAS o contexto fornecido acima. 
+                        Se a resposta não estiver no contexto, diga que não localizou a informação.
+                        """
+
+                        # 3. Chamada ao Gemini (agora com prompt leve e rápido)
                         responses = client.models.generate_content_stream(
-                            model="gemini-2.5-flash",
-                            contents=prompt_completo,
-                            #contents=[pergunta],
+                            model="gemini-1.5-flash", # Flash é ideal para RAG pela velocidade
+                            contents=[prompt_rag],
                             config=types.GenerateContentConfig(
-                                #cached_content=st.session_state['cache_name'],
                                 system_instruction=instrucao,
                                 temperature=0.0)
                         )
+                        
                         for chunk in responses:
                             full_response += chunk.text
                             # Atualiza a tela em tempo real
