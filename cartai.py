@@ -126,7 +126,7 @@ with tab_chat:
 
                         # 3. Chamada ao Gemini (agora com prompt leve e rápido)
                         responses = client.models.generate_content_stream(
-                            model="gemini-1.5-flash", # Flash é ideal para RAG pela velocidade
+                            model="gemini-2.5-flash", # Flash é ideal para RAG pela velocidade
                             contents=[prompt_rag],
                             config=types.GenerateContentConfig(
                                 system_instruction=instrucao,
