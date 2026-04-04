@@ -73,15 +73,18 @@ with tab_chat:
         st.stop() # Interrompe a execução desta aba até que a base exista
     
     else:
-        # 1. Inicializar histórico se não existir
-        if "mensagens" not in st.session_state:
-            st.session_state.mensagens = []
-        # 2. Mostrar Histórico com Horas
-        for msg in st.session_state.mensagens:
-            with st.chat_message(msg["role"]):
-                # Criamos uma linha pequena com a hora e o conteúdo
-                st.caption(f"🕒 {msg['hora']}") 
-                st.markdown(msg["content"])
+        # Criar um container para as mensagens (mantém o scroll organizado)
+        chat_container = st.container()
+        with chat_container:
+            # 1. Inicializar histórico se não existir
+            if "mensagens" not in st.session_state:
+                st.session_state.mensagens = []
+            # 2. Mostrar Histórico com Horas
+            for msg in st.session_state.mensagens:
+                with st.chat_message(msg["role"]):
+                    # Criamos uma linha pequena com a hora e o conteúdo
+                    st.caption(f"🕒 {msg['hora']}") 
+                    st.markdown(msg["content"])
 
         # 3. Entrada de Pergunta
         if pergunta := st.chat_input("Pergunta algo..."):
@@ -93,64 +96,65 @@ with tab_chat:
                 "content": pergunta, 
                 "hora": agora
             })
+            with chat_container:
+                with st.chat_message("user"):
+                    st.caption(f"🕒 {agora}")
+                    st.markdown(pergunta)
+
+                # 4. Gerar Resposta do Assistente
+                with st.chat_message("assistant"):
+                    placeholder = st.empty() # Espaço para a resposta ir "brotando"
+                    full_response = ""
+                    with st.spinner("⚡ A processar..."):
+                        try:
+                            # 1. Recuperar trechos relevantes (Top 5 trechos)
+                            vector_db = st.session_state['vector_db']
+                            docs_relevantes = vector_db.similarity_search(pergunta, k=5)
+                            contexto_extraido = "\n\n".join([doc.page_content for doc in docs_relevantes])
+                            
+                            # 2. Montar o Prompt RAG
+                            prompt_rag = f"""
+                            CONTEXTO DOS DOCUMENTOS:
+                            {contexto_extraido}
+                            
+                            PERGUNTA DO MUNÍCIPE:
+                            {pergunta}
+                            """
+
+                            instrucao = """
+                            Você é servidor público do Município de Presidente Prudente.
+                            Responda usando APENAS o contexto fornecido acima. 
+                            Se a resposta não estiver no contexto, diga que não localizou a informação.
+                            """
+
+                            # 3. Chamada ao Gemini (agora com prompt leve e rápido)
+                            responses = client.models.generate_content_stream(
+                                model="gemini-2.5-flash", # Flash é ideal para RAG pela velocidade
+                                contents=[prompt_rag],
+                                config=types.GenerateContentConfig(
+                                    system_instruction=instrucao,
+                                    temperature=0.0)
+                            )
+                            
+                            for chunk in responses:
+                                full_response += chunk.text
+                                # Atualiza a tela em tempo real
+                                placeholder.markdown(full_response + "▌")
             
-            with st.chat_message("user"):
-                st.caption(f"🕒 {agora}")
-                st.markdown(pergunta)
+                            placeholder.markdown(full_response) # Finaliza sem o cursor
 
-            # 4. Gerar Resposta do Assistente
-            with st.chat_message("assistant"):
-                placeholder = st.empty() # Espaço para a resposta ir "brotando"
-                full_response = ""
-                with st.spinner("⚡ A processar..."):
-                    try:
-                        # 1. Recuperar trechos relevantes (Top 5 trechos)
-                        vector_db = st.session_state['vector_db']
-                        docs_relevantes = vector_db.similarity_search(pergunta, k=5)
-                        contexto_extraido = "\n\n".join([doc.page_content for doc in docs_relevantes])
-                        
-                        # 2. Montar o Prompt RAG
-                        prompt_rag = f"""
-                        CONTEXTO DOS DOCUMENTOS:
-                        {contexto_extraido}
-                        
-                        PERGUNTA DO MUNÍCIPE:
-                        {pergunta}
-                        """
+                            # Pegamos a hora exata da resposta
+                            hora_resp = datetime.now().strftime("%H:%M")
 
-                        instrucao = """
-                        Você é servidor público do Município de Presidente Prudente.
-                        Responda usando APENAS o contexto fornecido acima. 
-                        Se a resposta não estiver no contexto, diga que não localizou a informação.
-                        """
-
-                        # 3. Chamada ao Gemini (agora com prompt leve e rápido)
-                        responses = client.models.generate_content_stream(
-                            model="gemini-2.5-flash", # Flash é ideal para RAG pela velocidade
-                            contents=[prompt_rag],
-                            config=types.GenerateContentConfig(
-                                system_instruction=instrucao,
-                                temperature=0.0)
-                        )
-                        
-                        for chunk in responses:
-                            full_response += chunk.text
-                            # Atualiza a tela em tempo real
-                            placeholder.markdown(full_response + "▌")
-        
-                        placeholder.markdown(full_response) # Finaliza sem o cursor
-
-                        # Pegamos a hora exata da resposta
-                        hora_resp = datetime.now().strftime("%H:%M")
-
-                        # Mostrar e guardar resposta com hora
-                        st.caption(f"🕒 {hora_resp}")
-                        #st.markdown(res.text)
-                        st.session_state.mensagens.append({
-                            "role": "assistant", 
-                            "content": full_response, 
-                            "hora": hora_resp
-                        })
-                        
-                    except Exception as e:
-                        st.error(f"Erro na consulta: {e}")
+                            # Mostrar e guardar resposta com hora
+                            st.caption(f"🕒 {hora_resp}")
+                            #st.markdown(res.text)
+                            st.session_state.mensagens.append({
+                                "role": "assistant", 
+                                "content": full_response, 
+                                "hora": hora_resp
+                            })
+                            
+                        except Exception as e:
+                            st.error(f"Erro na consulta: {e}")
+            st.rerun()
