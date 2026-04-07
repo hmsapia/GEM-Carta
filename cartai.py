@@ -37,7 +37,7 @@ with tab_admin:
         
         all_docs = []
         # Configuração do modelo de Embeddings (transforma texto em números)
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=api_key)
+        embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001", google_api_key=api_key)
         
         for i, arq in enumerate(arquivos_novos):
             texto_status.text(f"📖 Processando: {arq.name}")
